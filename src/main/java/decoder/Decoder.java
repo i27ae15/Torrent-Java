@@ -1,17 +1,19 @@
 package decoder;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
-import utils.ListIntPair;
-import utils.StringIntPair;
+import utils.BencodingTypes.DecodedDictionary;
+import utils.BencodingTypes.DecodedList;
+import utils.BencodingTypes.DecodedValue;
 
 public class Decoder {
 
-    private static StringIntPair decodeString(String bencodedString) {
+    private static DecodedValue decodeString(String bencodedString) {
         return decodeString(bencodedString, 0);
     }
 
-    private static StringIntPair decodeString(String bencodedString, int startIdx) {
+    private static DecodedValue decodeString(String bencodedString, int startIdx) {
         int firstColonIndex = 0;
         int totalLength = 0;
 
@@ -27,78 +29,166 @@ public class Decoder {
         String str = bencodedString.substring(firstColonIndex+1, firstColonIndex+1+length);
         totalLength += str.length();
 
-        return new StringIntPair(str, totalLength);
+        return new DecodedValue(str, totalLength);
     }
 
-    private static StringIntPair decodeNumber(String bencodedString) {
+    private static DecodedValue decodeNumber(String bencodedString) {
         return decodeNumber(bencodedString, 0);
     }
 
-    private static StringIntPair decodeNumber(String bencodedString, int startIdx) {
-        int index = bencodedString.indexOf("e", startIdx);
-
-        System.err.println("STR: " + bencodedString + " | INDEX: " + index + " | START_IDX: " + startIdx);
-
+    private static DecodedValue decodeNumber(String bencodedString, int startIdx) {
         String str = bencodedString.substring(startIdx + 1, bencodedString.indexOf("e", startIdx));
-        return new StringIntPair(str, str.length() + 2);
+        return new DecodedValue(str, str.length() + 2);
     }
 
-    private static ListIntPair decodeList(String bencodedList, int startIdx) {
+    private static DecodedList decodeList(String bencodedList, int startIdx) {
         ArrayList<Object> decodedList = new ArrayList<>();
+
         int decodedSize = 0;
+        int length = 0;
+
+        Object value;
 
         for (int i = startIdx; i < bencodedList.length(); i++) {
-            StringIntPair currentDecoded = new StringIntPair("", 0);
             char currentChar = bencodedList.charAt(i);
 
             if (Character.isDigit(currentChar)) {
-                currentDecoded = decodeString(bencodedList, i);
-                decodedList.add(currentDecoded.first());
-
-            } else if (currentChar == 'i') {
-                currentDecoded = decodeNumber(bencodedList, i);
-                decodedList.add(Long.parseLong(currentDecoded.first()));
-
-            } else if (currentChar == 'l') {
-                ListIntPair list = decodeList(bencodedList, i + 1);
-                decodedList.add(list.first());
-                i += list.second();
-                continue;
-
-
-            } else if (currentChar == 'e') {
-                return new ListIntPair(decodedList, decodedSize);
+                DecodedValue currentDecoded = decodeString(bencodedList, i);
+                length = currentDecoded.length() - 1;
+                value = currentDecoded.value();
 
             } else {
-                continue;
+
+                switch (currentChar) {
+                    case 'i':
+                        DecodedValue currentDecoded = decodeNumber(bencodedList, i);
+                        length = currentDecoded.length() - 1;
+                        value = Long.parseLong(currentDecoded.value());
+                        break;
+
+                    case 'l':
+                        DecodedList list = decodeList(bencodedList, i + 1);
+                        length += list.length();
+                        value = list.list();
+                        break;
+
+                    case 'd':
+                        DecodedDictionary dictionary = decodeDictionary(bencodedList, i + 1);
+                        length += dictionary.length();
+                        value = dictionary.dictionary();
+                        break;
+
+                    case 'e':
+                        return new DecodedList(decodedList, decodedSize);
+
+                    default:
+                        continue;
+                }
+
             }
 
-            i += currentDecoded.second() - 1;
+            i += length;
             decodedSize += i;
+            decodedList.add(value);
 
         }
 
-        return new ListIntPair(decodedList, decodedSize);
+        return new DecodedList(decodedList, decodedSize);
+
+    }
+
+    private static DecodedDictionary decodeDictionary(String bencodedDictionary, int startIdx) {
+        HashMap<String, Object> decodedDictionary = new HashMap<>();
+        int decodedSize = 0;
+        int length = 0;
+
+        String key = null;
+        Object value = null;
+
+        for (int i = startIdx; i < bencodedDictionary.length(); i++) {
+            char currentChar = bencodedDictionary.charAt(i);
+
+            if (Character.isDigit(currentChar)) {
+                DecodedValue currentDecoded = decodeString(bencodedDictionary, i);
+                length = currentDecoded.length() - 1;
+
+                if (key == null) {
+                    key = currentDecoded.value();
+                } else {
+                    value = currentDecoded.value();
+                }
+
+            } else {
+
+                switch (currentChar) {
+                    case 'i':
+                        DecodedValue currentDecoded = decodeNumber(bencodedDictionary, i);
+                        length = currentDecoded.length() - 1;
+                        value = Long.parseLong(currentDecoded.value());
+                        break;
+
+                    case 'l':
+                        DecodedList list = decodeList(bencodedDictionary, i + 1);
+                        length += list.length();
+                        value = list.list();
+                        break;
+
+                    case 'd':
+                        DecodedDictionary dictionary = decodeDictionary(bencodedDictionary, i + 1);
+                        length += dictionary.length();
+                        value = dictionary.dictionary();
+                        break;
+
+                    case 'e':
+                        return new DecodedDictionary(decodedDictionary, decodedSize);
+
+                    default:
+                        continue;
+                }
+
+            }
+
+            i += length;
+            decodedSize += i;
+
+            if (key != null && value != null) {
+                decodedDictionary.put(key, value);
+                key = null;
+                value = null;
+            }
+        }
+
+        return new DecodedDictionary(decodedDictionary, decodedSize);
 
     }
 
     public static Object decodeBencode(String bencodedString) {
 
-        if (Character.isDigit(bencodedString.charAt(0))) {
-            return decodeString(bencodedString).first();
+        char initialChar = bencodedString.charAt(0);
+        char lastChar = bencodedString.charAt(bencodedString.length() - 1);
+
+        if (Character.isDigit(initialChar)) {
+            return decodeString(bencodedString).value();
         }
 
-        else if (bencodedString.charAt(0) == 'i' && bencodedString.charAt(bencodedString.length() - 1) == 'e') {
-            return Long.parseLong(decodeNumber(bencodedString).first());
-        }
+        else if (lastChar == 'e') {
 
-        else if (bencodedString.charAt(0) == 'l' && bencodedString.charAt(bencodedString.length() - 1) == 'e') {
-            // StartIdx at 1 to avoid L again
-            return decodeList(bencodedString, 1).first();
+            switch (initialChar) {
+                case 'i':
+                    return Long.parseLong(decodeNumber(bencodedString).value());
+
+                case 'l':
+                    return decodeList(bencodedString, 1).list();
+
+                case 'd':
+                    return decodeDictionary(bencodedString, 1).dictionary();
+
+                default:
+                    break;
+            }
         }
 
         throw new RuntimeException("Unsupported bencode format");
-
     }
 
 }
