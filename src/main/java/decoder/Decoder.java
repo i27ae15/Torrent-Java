@@ -114,6 +114,7 @@ public class Decoder {
 
                 if (key == null) {
                     key = currentDecoded.value();
+
                 } else {
                     value = currentDecoded.value();
                 }
