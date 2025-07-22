@@ -1,4 +1,4 @@
-package decoder;
+package coder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
