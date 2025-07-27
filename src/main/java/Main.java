@@ -1,3 +1,5 @@
+import java.util.HexFormat;
+
 import com.google.gson.Gson;
 
 import Parser.TorrentFile;
@@ -39,6 +41,20 @@ public class Main {
 
           peer = new Peer(torrentFile);
           peer.discoverPeers();
+
+          break;
+
+        case "handshake":
+
+          fileName = args[1];
+          torrentFile = new TorrentFile(fileName);
+
+          String ip = args[2];
+
+          peer = new Peer(torrentFile);
+          peer.performHandshake(ip);
+
+          System.out.println("Peer ID: " + peer.getPeerConnectedToIdString());
 
           break;
 
