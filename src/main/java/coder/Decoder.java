@@ -26,7 +26,7 @@ public class Decoder {
         }
 
         int length = Integer.parseInt(bencodedString.substring(startIdx, firstColonIndex));
-        String str = bencodedString.substring(firstColonIndex+1, firstColonIndex+1+length);
+        String str = bencodedString.substring(firstColonIndex+1, firstColonIndex+length+1);
         totalLength += str.length();
 
         return new DecodedValue(str, totalLength);
@@ -114,7 +114,6 @@ public class Decoder {
 
                 if (key == null) {
                     key = currentDecoded.value();
-
                 } else {
                     value = currentDecoded.value();
                 }
@@ -153,6 +152,10 @@ public class Decoder {
             decodedSize += i;
 
             if (key != null && value != null) {
+
+                // System.out.println("KEY: " + key);
+                // System.out.println("VALUE: " + value);
+
                 decodedDictionary.put(key, value);
                 key = null;
                 value = null;

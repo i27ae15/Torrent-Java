@@ -1,6 +1,7 @@
 import com.google.gson.Gson;
 
-import Parser.TorrentFileInfo;
+import Parser.TorrentFile;
+import Peers.Peer;
 import coder.Decoder;
 
 
@@ -12,6 +13,11 @@ public class Main {
       String command = args[0];
       Object decoded;
 
+      String fileName;
+
+      TorrentFile torrentFile;
+      Peer peer;
+
       switch (command) {
         case "decode":
           String bencodedValue = args[1];
@@ -21,8 +27,19 @@ public class Main {
           break;
 
         case "info":
-          String fileName = args[1];
-          TorrentFileInfo.getInfo(fileName);
+          fileName = args[1];
+          torrentFile = new TorrentFile(fileName);
+          torrentFile.printFileInfo();
+          break;
+
+        case "peers":
+
+          fileName = args[1];
+          torrentFile = new TorrentFile(fileName);
+
+          peer = new Peer(torrentFile);
+          peer.discoverPeers();
+
           break;
 
         default:
