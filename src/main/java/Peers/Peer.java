@@ -41,9 +41,6 @@ public class Peer {
 
     private void processPeersResponse(String bencodedBody) {
 
-        System.out.println("------------ DECODING RESPONSE FROM PEER ------------");
-        System.err.print(bencodedBody);
-
         @SuppressWarnings("unchecked")
         HashMap<String, Object> body = (HashMap<String, Object>) Decoder.decodeBencode(bencodedBody);
 
